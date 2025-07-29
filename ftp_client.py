@@ -65,6 +65,7 @@ class FTPClient:
         else:
             print("⚠️ Not connected to any FTP server.")
 
+    @staticmethod
     def show_progress_bar(current, total, prefix="Progress", length=40):
         """Display a simple progress bar."""
         if total == 0:
@@ -104,6 +105,7 @@ class FTPClient:
                 s.sendall(file_size.to_bytes(8, byteorder='big'))
 
                 # Send file data
+                sent_bytes = 0
                 with open(file_path, "rb") as f:
                     while True:
                         data = f.read(BUFFER_SIZE)
@@ -111,7 +113,7 @@ class FTPClient:
                             break
                         s.sendall(data)
                         sent_bytes += len(data)
-                        show_progress_bar(sent_bytes, file_size, "Scan")
+                        FTPClient.show_progress_bar(sent_bytes, file_size, "Scan")
                 
                 # Receive scan result
                 result = s.recv(1024).decode('utf-8').strip()
@@ -288,7 +290,7 @@ class FTPClient:
             
         def __call__(self, data):
             self.transferred += len(data)
-            show_progress_bar(self.transferred, self.file_size, self.operation)
+            FTPClient.show_progress_bar(self.transferred, self.file_size, self.operation)
 
     # --- Transfer Operations ---
     def upload_file(self, local_path, remote_path=None):
@@ -315,17 +317,11 @@ class FTPClient:
             print(f"📤 Uploading '{local_path}' to server as '{remote_path}'...")
             self.ftp.stor(local_path, remote_path, binary=(self.transfer_type == 'binary'))
 
-            progress_callback = ProgressCallback(file_size, "Upload")
-        
-            with open(local_path, 'rb') as f:
-                if self.transfer_type == 'binary':
-                    self.ftp.storbinary(f'STOR {remote_path}', f, callback=progress_callback)
-                else:
-                    content = f.read()
-                    progress_callback.transferred = len(content)
-                    show_progress_bar(progress_callback.transferred, file_size, "Upload")
-                    self.ftp.storlines(f'STOR {remote_path}', content.decode().splitlines())
+            file_size = os.path.getsize(local_path)
+            progress_callback = self.ProgressCallback(file_size, "Upload")
 
+            progress_callback.transferred = file_size
+            FTPClient.show_progress_bar(progress_callback.transferred, file_size, "Upload")
 
             print("✅ Upload successful.")
             return True
@@ -349,10 +345,13 @@ class FTPClient:
             except:
                 file_size = 0
 
-            print(f"⬇️ Downloading '{remote_path}' from server...")
-            progress_callback = ProgressCallback(file_size, "Download")
-            
+            print(f"⬇️ Downloading '{remote_path}' from server...")            
             self.ftp.retr(remote_path, local_path, binary=(self.transfer_type == 'binary'))
+            
+            progress_callback = self.ProgressCallback(file_size, "Download")
+            progress_callback.transferred = file_size
+            FTPClient.show_progress_bar(progress_callback.transferred, file_size, "Upload")
+                    
             print(f"✅ Downloaded: {remote_path} to {local_path}")
             return True
             

@@ -15,7 +15,7 @@ BUFFER_SIZE = 4096
 def get_clamscan_path():
     """Return the path to clamscan based on OS."""
     if sys.platform.startswith('win'):
-        return r"C:\\Program Files\\ClamAV\\clamscan.exe"
+        return r"C:\\Program Files (x86)\\clam\\clam\\clamscan.exe"
     elif sys.platform.startswith('linux'):
         return '/usr/bin/clamscan'
     else:
